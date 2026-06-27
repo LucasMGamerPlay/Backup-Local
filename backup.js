@@ -7,9 +7,10 @@ const cron = require('node-cron');
 
 // 1. Caminho do arquivo de texto que contém as pastas
 const ARQUIVO_PASTAS = path.join(__dirname, 'pastas.txt');
-
 // 2. Pasta onde os backups serão salvos (será criada se não existir)
-const PASTA_DESTINO = path.join(__dirname, 'meus_backups');
+const ARQUIVO_DESTINO = path.join(__dirname, 'destino.txt'); 
+// Pasta de segurança caso o txt esteja vazio
+const PASTA_PADRAO = path.join(__dirname, 'meus_backups'); 
 
 // 3. Intervalo de tempo (Formato Cron)
 // '0 * * * *' = Roda a cada 1 hora.
@@ -22,9 +23,38 @@ const DIAS_RETENCAO = 4;
 
 // =================================================
 
-// Garante que a pasta de destino exista
-if (!fs.existsSync(PASTA_DESTINO)) {
-    fs.mkdirSync(PASTA_DESTINO, { recursive: true });
+function obterPastaDestino() {
+    let destino = '';
+
+    // Verifica se o arquivo txt existe e tenta ler a primeira linha
+    if (fs.existsSync(ARQUIVO_DESTINO)) {
+        const conteudo = fs.readFileSync(ARQUIVO_DESTINO, 'utf-8').split('\n')[0];
+        if (conteudo) {
+            destino = conteudo.trim();
+        }
+    }
+
+    // Se o txt não existir ou estiver completamente vazio
+    if (!destino) {
+        console.log(`[SISTEMA] Arquivo destino.txt vazio ou inexistente. Assumindo rota de segurança: ${PASTA_PADRAO}`);
+        destino = PASTA_PADRAO;
+        
+        // Escreve a rota padrão dentro do txt para orientar o usuário
+        fs.writeFileSync(ARQUIVO_DESTINO, PASTA_PADRAO, 'utf-8');
+    }
+
+    // Se a pasta escolhida (seja a do txt ou a padrão) não existir no computador, ele cria
+    if (!fs.existsSync(destino)) {
+        try {
+            fs.mkdirSync(destino, { recursive: true });
+            console.log(`[SISTEMA] A pasta de destino foi criada no disco: ${destino}`);
+        } catch (err) {
+            console.error(`[ERRO] Não foi possível criar a pasta de destino ${destino}:`, err.message);
+            return null;
+        }
+    }
+
+    return destino;
 }
 
 function limparBackupsAntigos() {
