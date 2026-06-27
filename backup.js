@@ -21,12 +21,11 @@ const INTERVALO = '0 * * * *';
 //Quantos dias os backups devem ser mantidos?
 const DIAS_RETENCAO = 4;
 
-// =================================================
+// =============================================================
 
 function obterPastaDestino() {
     let destino = '';
 
-    // Verifica se o arquivo txt existe e tenta ler a primeira linha
     if (fs.existsSync(ARQUIVO_DESTINO)) {
         const conteudo = fs.readFileSync(ARQUIVO_DESTINO, 'utf-8').split('\n')[0];
         if (conteudo) {
@@ -34,16 +33,12 @@ function obterPastaDestino() {
         }
     }
 
-    // Se o txt não existir ou estiver completamente vazio
     if (!destino) {
-        console.log(`[SISTEMA] Arquivo destino.txt vazio ou inexistente. Assumindo rota de segurança: ${PASTA_PADRAO}`);
+        console.log(`\n[SISTEMA] Arquivo destino.txt vazio ou inexistente. Assumindo rota de segurança: ${PASTA_PADRAO}`);
         destino = PASTA_PADRAO;
-        
-        // Escreve a rota padrão dentro do txt para orientar o usuário
         fs.writeFileSync(ARQUIVO_DESTINO, PASTA_PADRAO, 'utf-8');
     }
 
-    // Se a pasta escolhida (seja a do txt ou a padrão) não existir no computador, ele cria
     if (!fs.existsSync(destino)) {
         try {
             fs.mkdirSync(destino, { recursive: true });
@@ -65,6 +60,7 @@ function limparBackupsAntigos(pastaDestino) {
     const arquivos = fs.readdirSync(pastaDestino);
     const tempoAtual = Date.now();
     const tempoLimiteEmMilissegundos = DIAS_RETENCAO * 24 * 60 * 60 * 1000;
+    let apagados = 0;
 
     arquivos.forEach(arquivo => {
         if (path.extname(arquivo) !== '.zip') return;
@@ -77,15 +73,21 @@ function limparBackupsAntigos(pastaDestino) {
             try {
                 fs.unlinkSync(caminhoArquivo);
                 console.log(`[LIXEIRA] Backup antigo removido: ${arquivo}`);
+                apagados++;
             } catch (err) {
                 console.error(`[ERRO] Não foi possível apagar ${arquivo}:`, err.message);
             }
         }
     });
+
+    if (apagados === 0) {
+        console.log('[INFO] Nenhum backup antigo precisou ser apagado neste ciclo.');
+    }
 }
 
 function fazerBackup() {
-    console.log('\n--- Iniciando rotina de backup ---');
+    console.log('\n=================================================');
+    console.log('--- INICIANDO NOVO CICLO DE BACKUP ---');
 
     const pastaDestinoAtual = obterPastaDestino();
     
@@ -123,22 +125,30 @@ function fazerBackup() {
         const caminhoDestinoZip = path.join(pastaDestinoAtual, nomeArquivoZip);
 
         try {
-            console.log(`Compactando ${nomePasta}...`);
+            console.log(`\nCompactando: ${nomePasta}...`);
             const zip = new AdmZip();
             zip.addLocalFolder(pastaOrigem);
             zip.writeZip(caminhoDestinoZip);
-            console.log(`[SUCESSO] Salvo em ${pastaDestinoAtual}: ${nomeArquivoZip}`);
+            console.log(`[SUCESSO] Salvo em: ${caminhoDestinoZip}`);
         } catch (err) {
             console.error(`[ERRO] Falha ao compactar ${nomePasta}:`, err.message);
         }
     });
 
+    // Executa a limpeza
     limparBackupsAntigos(pastaDestinoAtual);
+
+    // ================= NOVO PAINEL DE RESUMO =================
+    console.log('\n--- RESUMO DAS CONFIGURAÇÕES ATUAIS ---');
+    console.log(`📅 Intervalo do Cron: ${INTERVALO}`);
+    console.log(`🗑️  Dias de Retenção: ${DIAS_RETENCAO} dias`);
+    console.log(`📂 Destino Atual: ${pastaDestinoAtual}`);
+    console.log(`📁 Pastas Monitoradas (${caminhos.length}):`);
+    caminhos.forEach(pasta => console.log(`   - ${pasta}`));
+    console.log('=================================================\n');
 }
 
 console.log(`Serviço de backup iniciado. Aguardando o intervalo programado (${INTERVALO})...`);
-console.log(`Verificando destino no arquivo: ${ARQUIVO_DESTINO}`);
-console.log(`Backups mais velhos que ${DIAS_RETENCAO} dias serão apagados automaticamente.`);
 
 cron.schedule(INTERVALO, () => {
     fazerBackup();
