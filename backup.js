@@ -16,7 +16,7 @@ const PASTA_PADRAO = path.join(__dirname, 'meus_backups');
 // '0 * * * *' = Roda a cada 1 hora.
 // '*/30 * * * * *' = Roda a cada 30 segundos (ótimo para testar).
 // '0 0 * * *' = Roda todo dia à meia-noite.
-const INTERVALO = '*/30 * * * * *'; 
+const INTERVALO = '0 * * * *'; 
 
 //Quantos dias os backups devem ser mantidos?
 const DIAS_RETENCAO = 4;
