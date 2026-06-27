@@ -17,11 +17,44 @@ const PASTA_DESTINO = path.join(__dirname, 'meus_backups');
 // '0 0 * * *' = Roda todo dia à meia-noite.
 const INTERVALO = '*/30 * * * * *'; 
 
+//Quantos dias os backups devem ser mantidos?
+const DIAS_RETENCAO = 4;
+
 // =================================================
 
 // Garante que a pasta de destino exista
 if (!fs.existsSync(PASTA_DESTINO)) {
     fs.mkdirSync(PASTA_DESTINO, { recursive: true });
+}
+
+function limparBackupsAntigos() {
+    console.log('\n--- Verificando backups antigos para limpeza ---');
+    
+    if (!fs.existsSync(PASTA_DESTINO)) return;
+
+    const arquivos = fs.readdirSync(PASTA_DESTINO);
+    const tempoAtual = Date.now();
+    const tempoLimiteEmMilissegundos = DIAS_RETENCAO * 24 * 60 * 60 * 1000;
+
+    arquivos.forEach(arquivo => {
+        // Garante que só vai apagar arquivos .zip para evitar apagar coisas erradas
+        if (path.extname(arquivo) !== '.zip') return;
+
+        const caminhoArquivo = path.join(PASTA_DESTINO, arquivo);
+        const informacoesArquivo = fs.statSync(caminhoArquivo);
+        
+        // Calcula a idade do arquivo com base na data de modificação
+        const idadeDoArquivo = tempoAtual - informacoesArquivo.mtimeMs;
+
+        if (idadeDoArquivo > tempoLimiteEmMilissegundos) {
+            try {
+                fs.unlinkSync(caminhoArquivo); // Apaga o arquivo
+                console.log(`[LIXEIRA] Backup antigo removido: ${arquivo}`);
+            } catch (err) {
+                console.error(`[ERRO] Não foi possível apagar ${arquivo}:`, err.message);
+            }
+        }
+    });
 }
 
 function fazerBackup() {
