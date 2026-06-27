@@ -57,28 +57,25 @@ function obterPastaDestino() {
     return destino;
 }
 
-function limparBackupsAntigos() {
+function limparBackupsAntigos(pastaDestino) {
     console.log('\n--- Verificando backups antigos para limpeza ---');
     
-    if (!fs.existsSync(PASTA_DESTINO)) return;
+    if (!fs.existsSync(pastaDestino)) return;
 
-    const arquivos = fs.readdirSync(PASTA_DESTINO);
+    const arquivos = fs.readdirSync(pastaDestino);
     const tempoAtual = Date.now();
     const tempoLimiteEmMilissegundos = DIAS_RETENCAO * 24 * 60 * 60 * 1000;
 
     arquivos.forEach(arquivo => {
-        // Garante que só vai apagar arquivos .zip para evitar apagar coisas erradas
         if (path.extname(arquivo) !== '.zip') return;
 
-        const caminhoArquivo = path.join(PASTA_DESTINO, arquivo);
+        const caminhoArquivo = path.join(pastaDestino, arquivo);
         const informacoesArquivo = fs.statSync(caminhoArquivo);
-        
-        // Calcula a idade do arquivo com base na data de modificação
         const idadeDoArquivo = tempoAtual - informacoesArquivo.mtimeMs;
 
         if (idadeDoArquivo > tempoLimiteEmMilissegundos) {
             try {
-                fs.unlinkSync(caminhoArquivo); // Apaga o arquivo
+                fs.unlinkSync(caminhoArquivo);
                 console.log(`[LIXEIRA] Backup antigo removido: ${arquivo}`);
             } catch (err) {
                 console.error(`[ERRO] Não foi possível apagar ${arquivo}:`, err.message);
@@ -90,8 +87,15 @@ function limparBackupsAntigos() {
 function fazerBackup() {
     console.log('\n--- Iniciando rotina de backup ---');
 
+    const pastaDestinoAtual = obterPastaDestino();
+    
+    if (!pastaDestinoAtual) {
+        console.error('[ABORTADO] Backup não realizado por erro na pasta de destino.');
+        return;
+    }
+
     if (!fs.existsSync(ARQUIVO_PASTAS)) {
-        console.error(`Arquivo de texto não encontrado: ${ARQUIVO_PASTAS}`);
+        console.error(`[ERRO] Arquivo de texto de origem não encontrado: ${ARQUIVO_PASTAS}`);
         return;
     }
 
@@ -101,7 +105,7 @@ function fazerBackup() {
         .filter(linha => linha.length > 0);
 
     if (caminhos.length === 0) {
-        console.log('Nenhuma pasta encontrada no arquivo.txt');
+        console.log('[AVISO] Nenhuma pasta de origem encontrada no arquivo pastas.txt. Preencha o arquivo.');
         return;
     }
 
@@ -110,40 +114,32 @@ function fazerBackup() {
 
     caminhos.forEach(pastaOrigem => {
         if (!fs.existsSync(pastaOrigem)) {
-            console.error(`[ERRO] A pasta não existe: ${pastaOrigem}`);
+            console.error(`[ERRO] A pasta de origem não existe e será ignorada: ${pastaOrigem}`);
             return;
         }
 
         const nomePasta = path.basename(pastaOrigem);
         const nomeArquivoZip = `Backup_${nomePasta}_${dataFormatada}.zip`;
-        const caminhoDestinoZip = path.join(PASTA_DESTINO, nomeArquivoZip);
+        const caminhoDestinoZip = path.join(pastaDestinoAtual, nomeArquivoZip);
 
         try {
             console.log(`Compactando ${nomePasta}...`);
-            
-            // Inicia o processo de ZIP com a nova biblioteca
             const zip = new AdmZip();
-            
-            // Adiciona todo o conteúdo da pasta original no arquivo
             zip.addLocalFolder(pastaOrigem);
-            
-            // Salva fisicamente no disco
             zip.writeZip(caminhoDestinoZip);
-            
-            console.log(`[SUCESSO] Salvo: ${nomeArquivoZip}`);
+            console.log(`[SUCESSO] Salvo em ${pastaDestinoAtual}: ${nomeArquivoZip}`);
         } catch (err) {
             console.error(`[ERRO] Falha ao compactar ${nomePasta}:`, err.message);
         }
     });
+
+    limparBackupsAntigos(pastaDestinoAtual);
 }
 
-// Inicia o agendador
 console.log(`Serviço de backup iniciado. Aguardando o intervalo programado (${INTERVALO})...`);
+console.log(`Verificando destino no arquivo: ${ARQUIVO_DESTINO}`);
+console.log(`Backups mais velhos que ${DIAS_RETENCAO} dias serão apagados automaticamente.`);
 
 cron.schedule(INTERVALO, () => {
     fazerBackup();
 });
-
-// Descomente a linha abaixo se quiser que ele faça o backup logo que você iniciar o programa, 
-// além de esperar o tempo agendado:
-// fazerBackup();
