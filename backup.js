@@ -20,6 +20,8 @@ const INTERVALO = '0 * * * *';
 
 //Quantos dias os backups devem ser mantidos?
 const DIAS_RETENCAO = 4;
+//Limite mínimo de espaço livre no disco (em Gigabytes)
+const LIMITE_ESPACO_LIVRE_GB = 1;
 
 // =============================================================
 
@@ -53,18 +55,17 @@ function obterPastaDestino() {
 }
 
 function limparBackupsAntigos(pastaDestino) {
-    console.log('\n--- Verificando backups antigos para limpeza ---');
+    console.log('\n--- Verificando lixeira e espaço em disco ---');
     
     if (!fs.existsSync(pastaDestino)) return;
 
-    const arquivos = fs.readdirSync(pastaDestino);
+    let arquivos = fs.readdirSync(pastaDestino).filter(arq => path.extname(arq) === '.zip');
     const tempoAtual = Date.now();
     const tempoLimiteEmMilissegundos = DIAS_RETENCAO * 24 * 60 * 60 * 1000;
-    let apagados = 0;
+    let apagadosPorIdade = 0;
 
+    // 1ª FASE: Limpeza por limite de dias
     arquivos.forEach(arquivo => {
-        if (path.extname(arquivo) !== '.zip') return;
-
         const caminhoArquivo = path.join(pastaDestino, arquivo);
         const informacoesArquivo = fs.statSync(caminhoArquivo);
         const idadeDoArquivo = tempoAtual - informacoesArquivo.mtimeMs;
@@ -72,16 +73,70 @@ function limparBackupsAntigos(pastaDestino) {
         if (idadeDoArquivo > tempoLimiteEmMilissegundos) {
             try {
                 fs.unlinkSync(caminhoArquivo);
-                console.log(`[LIXEIRA] Backup antigo removido: ${arquivo}`);
-                apagados++;
+                console.log(`[LIXEIRA] Backup antigo removido (> ${DIAS_RETENCAO} dias): ${arquivo}`);
+                apagadosPorIdade++;
             } catch (err) {
                 console.error(`[ERRO] Não foi possível apagar ${arquivo}:`, err.message);
             }
         }
     });
 
-    if (apagados === 0) {
-        console.log('[INFO] Nenhum backup antigo precisou ser apagado neste ciclo.');
+    if (apagadosPorIdade === 0) {
+        console.log('[INFO] Nenhum backup estourou o limite de dias.');
+    }
+
+    // 2ª FASE: Limpeza de emergência por falta de espaço no HD
+    try {
+        // Verifica se a versão do Node suporta leitura de disco (Node 19.6+)
+        if (typeof fs.statfsSync === 'function') {
+            const limiteBytes = LIMITE_ESPACO_LIVRE_GB * 1024 * 1024 * 1024;
+            let stats = fs.statfsSync(pastaDestino);
+            let espacoLivre = stats.bavail * stats.bsize;
+            let apagadosPorEspaco = 0;
+
+            // Enquanto o espaço livre for menor que 1 GB...
+            while (espacoLivre < limiteBytes) {
+                // Atualiza a lista de arquivos que ainda restam
+                arquivos = fs.readdirSync(pastaDestino).filter(arq => path.extname(arq) === '.zip');
+                
+                if (arquivos.length === 0) {
+                    console.log(`[ALERTA MÁXIMO] O disco tem menos de ${LIMITE_ESPACO_LIVRE_GB}GB livre, mas não há mais backups do sistema para apagar!`);
+                    break;
+                }
+
+                // Lógica para descobrir qual é o arquivo mais antigo da lista
+                let arquivoMaisAntigo = arquivos[0];
+                let tempoMaisAntigo = fs.statSync(path.join(pastaDestino, arquivoMaisAntigo)).mtimeMs;
+
+                for (let i = 1; i < arquivos.length; i++) {
+                    const tempoAtualArq = fs.statSync(path.join(pastaDestino, arquivos[i])).mtimeMs;
+                    if (tempoAtualArq < tempoMaisAntigo) {
+                        tempoMaisAntigo = tempoAtualArq;
+                        arquivoMaisAntigo = arquivos[i];
+                    }
+                }
+
+                // Apaga o arquivo mais velho encontrado
+                const caminhoMaisAntigo = path.join(pastaDestino, arquivoMaisAntigo);
+                fs.unlinkSync(caminhoMaisAntigo);
+                console.log(`[EMERGÊNCIA] Backup removido por falta de espaço no HD: ${arquivoMaisAntigo}`);
+                apagadosPorEspaco++;
+
+                // Calcula o novo espaço livre do HD após apagar o arquivo
+                stats = fs.statfsSync(pastaDestino);
+                espacoLivre = stats.bavail * stats.bsize;
+            }
+
+            // Variável externa para usar no painel de resumo
+            global.espacoLivreGB = (espacoLivre / (1024 * 1024 * 1024)).toFixed(2);
+
+        } else {
+             console.log('[AVISO] Seu Node.js é antigo e não suporta a verificação de disco nativa. Atualize para a versão 20+ se quiser usar o limite de espaço.');
+             global.espacoLivreGB = 'Desconhecido (Node.js antigo)';
+        }
+    } catch (err) {
+         console.error('[ERRO] Falha ao verificar espaço em disco:', err.message);
+         global.espacoLivreGB = 'Erro na leitura';
     }
 }
 
@@ -114,6 +169,7 @@ function fazerBackup() {
     const dataAtual = new Date();
     const dataFormatada = dataAtual.toISOString().replace(/T/, '_').replace(/:/g, '-').split('.')[0];
 
+    // Compacta as pastas
     caminhos.forEach(pastaOrigem => {
         if (!fs.existsSync(pastaOrigem)) {
             console.error(`[ERRO] A pasta de origem não existe e será ignorada: ${pastaOrigem}`);
@@ -135,15 +191,16 @@ function fazerBackup() {
         }
     });
 
-    // Executa a limpeza
+    // Executa as verificações e limpeza de arquivos velhos/espaço no disco
     limparBackupsAntigos(pastaDestinoAtual);
 
-    // ================= NOVO PAINEL DE RESUMO =================
-    console.log('\n--- RESUMO DAS CONFIGURAÇÕES ATUAIS ---');
-    console.log(`📅 Intervalo do Cron: ${INTERVALO}`);
-    console.log(`🗑️  Dias de Retenção: ${DIAS_RETENCAO} dias`);
+    // ================= PAINEL DE RESUMO =================
+    console.log('\n--- RESUMO DO SISTEMA ---');
+    console.log(`📅 Intervalo de Execução: ${INTERVALO}`);
     console.log(`📂 Destino Atual: ${pastaDestinoAtual}`);
-    console.log(`📁 Pastas Monitoradas (${caminhos.length}):`);
+    console.log(`💾 Espaço Livre no Disco: ${global.espacoLivreGB || '?'} GB (Mínimo exigido: ${LIMITE_ESPACO_LIVRE_GB} GB)`);
+    console.log(`🗑️  Idade Máxima do Backup: ${DIAS_RETENCAO} dias`);
+    console.log(`📁 Pastas Sincronizadas (${caminhos.length}):`);
     caminhos.forEach(pasta => console.log(`   - ${pasta}`));
     console.log('=================================================\n');
 }
