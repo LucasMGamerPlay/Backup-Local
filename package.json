@@ -1,17 +1,80 @@
 {
   "name": "backup-em-node",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "productName": "Backup Local",
+  "version": "2.5.0",
+  "description": "Aplicativo desktop para backups locais agendados",
+  "main": "electron/main.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "electron .",
+    "smoke": "electron . --smoke-test",
+    "pack": "electron-builder --dir --win --x64",
+    "dist": "electron-builder --win nsis --x64",
+    "service": "node backup.js",
+    "check": "node --check backup.js && node --check electron/main.js && node --check electron/preload.js && node --check src/backup-core.js && node --check src/restore-core.js && node --check src/restore-manager.js && node --check src/restore-worker.js && node --check src/i18n.js && node --check renderer/i18n.js && node --check renderer/app.js",
+    "test": "node --test"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
-    "adm-zip": "^0.5.17",
+    "adm-zip": "^0.6.0",
+    "ignore": "^7.0.6",
     "node-cron": "^4.5.0"
+  },
+  "devDependencies": {
+    "electron": "43.4.0",
+    "electron-builder": "26.15.3"
+  },
+  "build": {
+    "appId": "com.lucas.backuplocal",
+    "productName": "Backup Local",
+    "copyright": "Copyright © 2026 Lucas",
+    "asar": true,
+    "compression": "normal",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "electron/**/*",
+      "renderer/**/*",
+      "src/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "build/icon.ico",
+        "to": "tray-icon.ico"
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.svg",
+      "executableName": "Backup Local",
+      "artifactName": "Backup-Local-Setup-${version}.${ext}",
+      "electronLanguages": [
+        "pt-BR"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Backup Local",
+      "uninstallDisplayName": "Backup Local",
+      "deleteAppDataOnUninstall": false,
+      "installerLanguages": [
+        "pt_BR"
+      ]
+    }
   }
 }
