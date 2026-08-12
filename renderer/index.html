@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:">
+  <title>Backup Local</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M12 3a7 7 0 0 0-7 7v1.2A3.8 3.8 0 0 0 6.8 18h10.4a3.8 3.8 0 0 0 1.2-7.4A6.5 6.5 0 0 0 12 3Zm0 4 3.5 3.5-1.4 1.4-1.1-1.1V15h-2v-4.2l-1.1 1.1-1.4-1.4L12 7Z"/></svg>
+        </div>
+        <div><strong>Backup Local</strong><span data-i18n="protectionAutomatic">Proteção automática</span></div>
+      </div>
+
+      <nav aria-label="Navegação principal">
+        <a class="nav-item active" href="#overview"><span class="nav-icon">⌂</span><span data-i18n="overview">Visão geral</span></a>
+        <a class="nav-item" href="#settings"><span class="nav-icon">⚙</span><span data-i18n="settings">Configurações</span></a>
+        <a class="nav-item" href="#restorePoints"><span class="nav-icon">◴</span><span data-i18n="restorePoints">Pontos no tempo</span></a>
+        <a class="nav-item" href="#history"><span class="nav-icon">↻</span><span data-i18n="history">Histórico</span></a>
+      </nav>
+
+      <div class="sidebar-status">
+        <span class="eyebrow" data-i18n="serviceStatus">STATUS DO SERVIÇO</span>
+        <div class="service-row"><span class="pulse-dot"></span><strong id="sidebarStatus">Pronto</strong></div>
+        <p id="sidebarSchedule" data-i18n="loadingSchedule">Carregando agendamento...</p>
+      </div>
+
+      <div class="sidebar-footer">
+        <span data-i18n="localStorage">Armazenamento local</span>
+        <strong data-i18n="filesStayWithYou">Seus arquivos ficam com você</strong>
+        <button id="quitAppBtn" type="button"><span>⏻</span><span data-i18n="quitCompletely">Sair completamente</span></button>
+      </div>
+    </aside>
+
+    <main>
+      <header class="topbar" id="overview">
+        <div><span class="eyebrow dark" data-i18n="controlPanel">PAINEL DE CONTROLE</span><h1 data-i18n="overview">Visão geral</h1></div>
+        <div class="top-actions">
+          <button class="button ghost" id="openDestinationBtn" type="button" data-i18n="openDestination">Abrir destino</button>
+          <button class="button primary" id="runBackupBtn" type="button"><span>▶</span><span data-i18n="backupNow">Fazer backup agora</span></button>
+          <button class="button danger hidden" id="cancelBackupBtn" type="button" data-i18n="cancel">Cancelar</button>
+        </div>
+      </header>
+
+      <section class="hero-card" aria-live="polite">
+        <div class="hero-copy">
+          <div class="status-pill" id="statusPill"><span></span><b>PRONTO</b></div>
+          <h2 id="statusTitle" data-i18n="protectedTitle">Seus arquivos estão protegidos</h2>
+          <p id="statusDescription" data-i18n="protectedDescription">O sistema está pronto para criar uma nova cópia de segurança.</p>
+          <div class="progress-track" id="progressTrack"><div id="progressFill"></div></div>
+          <span class="progress-label" id="progressLabel" data-i18n="waiting">Aguardando</span>
+        </div>
+        <div class="hero-visual" aria-hidden="true">
+          <div class="orbit orbit-one"></div><div class="orbit orbit-two"></div>
+          <div class="shield">
+            <svg viewBox="0 0 64 64"><path d="M32 5 54 13v16c0 14-8.7 24.9-22 30C18.7 53.9 10 43 10 29V13L32 5Z"/><path class="check" d="m21 31 7 7 15-17"/></svg>
+          </div>
+        </div>
+      </section>
+
+      <section class="metric-grid" aria-label="Resumo">
+        <article class="metric"><span class="metric-icon blue">▰</span><div><span data-i18n="protectedFoldersMetric">Pastas protegidas</span><strong id="sourceMetric">0</strong></div></article>
+        <article class="metric"><span class="metric-icon green">✓</span><div><span data-i18n="lastBackup">Último backup</span><strong id="lastBackupMetric">Ainda não realizado</strong></div></article>
+        <article class="metric"><span class="metric-icon amber">◷</span><div><span data-i18n="schedule">Agendamento</span><strong id="scheduleMetric">A cada hora</strong></div></article>
+        <article class="metric"><span class="metric-icon violet">▣</span><div><span data-i18n="freeSpace">Espaço livre</span><strong id="spaceMetric">—</strong></div></article>
+      </section>
+
+      <section class="content-grid" id="settings">
+        <article class="panel sources-panel">
+          <div class="panel-heading"><div><span class="eyebrow dark" data-i18n="sources">ORIGENS</span><h3 data-i18n="protectedFolders">Pastas protegidas</h3></div><button class="icon-button" id="addSourcesBtn" type="button" title="Adicionar pastas" data-i18n-title="addFoldersDialog">＋</button></div>
+          <div class="source-list" id="sourceList"></div>
+          <button class="add-source" id="addSourcesSecondaryBtn" type="button"><span>＋</span><div><strong data-i18n="addFolder">Adicionar uma pasta</strong><small data-i18n="chooseSources">Escolha uma ou mais origens</small></div></button>
+        </article>
+
+        <article class="panel settings-panel">
+          <div class="panel-heading"><div><span class="eyebrow dark" data-i18n="destinationRoutine">DESTINO E ROTINA</span><h3 data-i18n="settings">Configurações</h3></div><span class="unsaved hidden" id="unsavedBadge" data-i18n="unsaved">Não salvo</span></div>
+
+          <div class="language-field"><label class="field-label" for="language" data-i18n="language">Idioma</label><select id="language"><option value="pt-BR" data-i18n="portuguese">Português</option><option value="en" data-i18n="english">English</option></select></div>
+
+          <label class="field-label" for="destinationPath" data-i18n="destinationFolder">Pasta de destino</label>
+          <div class="path-control">
+            <input id="destinationPath" type="text" readonly>
+            <button id="selectDestinationBtn" type="button" data-i18n="choose">Escolher</button>
+          </div>
+
+          <div class="settings-row">
+            <label class="toggle-field"><span><strong data-i18n="automaticBackup">Backup automático</strong><small data-i18n="followSchedule">Executar seguindo o agendamento</small></span><input id="scheduleEnabled" type="checkbox"><i></i></label>
+          </div>
+
+          <div class="settings-row">
+            <label class="toggle-field"><span><strong data-i18n="startWindows">Iniciar com o Windows</strong><small data-i18n="startSilently">Abrir silenciosamente em segundo plano</small></span><input id="launchAtLogin" type="checkbox"><i></i></label>
+          </div>
+
+          <div class="settings-row">
+            <label class="toggle-field"><span><strong data-i18n="respectGitignore">Respeitar .gitignore</strong><small data-i18n="respectGitignoreHelp">Não incluir no ZIP os caminhos listados no .gitignore de cada origem</small></span><input id="respectGitignore" type="checkbox"><i></i></label>
+          </div>
+
+          <div class="background-note"><span>●</span><p><strong data-i18n="backgroundExecution">Execução em segundo plano</strong><span data-i18n="backgroundDescription">Ao fechar a janela, o Backup Local continua ativo na bandeja do Windows.</span></p></div>
+
+          <div class="two-columns">
+            <div><label class="field-label" for="schedulePreset" data-i18n="frequency">Frequência</label><select id="schedulePreset"><option value="*/30 * * * *" data-i18n="every30Minutes">A cada 30 minutos</option><option value="0 * * * *" data-i18n="everyHour">A cada hora</option><option value="0 0 * * *" data-i18n="dailyMidnight">Diariamente à meia-noite</option><option value="0 0 * * 0" data-i18n="everySunday">Todo domingo</option><option value="custom" data-i18n="custom">Personalizada</option></select></div>
+            <div><label class="field-label" for="retentionDays" data-i18n="keepDays">Manter por (dias)</label><input id="retentionDays" type="number" min="0" max="3650"></div>
+          </div>
+          <div class="custom-schedule hidden" id="customScheduleGroup"><label class="field-label" for="customSchedule" data-i18n="cronExpression">Expressão cron</label><input id="customSchedule" type="text" placeholder="0 * * * *"></div>
+
+          <div class="two-columns compact-fields">
+            <div><label class="field-label" for="minFreeSpaceGB" data-i18n="minimumSpace">Espaço mínimo (GB)</label><input id="minFreeSpaceGB" type="number" min="0" step="0.1"></div>
+            <label class="checkbox-field"><input id="backupOnStartup" type="checkbox"><span><strong data-i18n="onAppOpen">Ao abrir o aplicativo</strong><small data-i18n="createAutomatically">Criar backup automaticamente</small></span></label>
+          </div>
+
+          <button class="button save-button" id="saveConfigBtn" type="button" data-i18n="saveSettings">Salvar configurações</button>
+        </article>
+      </section>
+
+      <section class="panel activity-panel">
+        <div class="panel-heading"><div><span class="eyebrow dark" data-i18n="activity">ATIVIDADE</span><h3 data-i18n="currentOperation">Operação atual</h3></div><button class="text-button" id="clearActivityBtn" type="button" data-i18n="clear">Limpar</button></div>
+        <div class="activity-list" id="activityList"><div class="empty-state"><span>✓</span><p data-i18n="noActivity">Nenhuma atividade nesta sessão.</p></div></div>
+      </section>
+
+      <section class="panel restore-panel" id="restorePoints">
+        <div class="panel-heading"><div><span class="eyebrow dark" data-i18n="versions">VERSÕES</span><h3 data-i18n="restorePoints">Pontos no tempo</h3></div><button class="text-button" id="refreshRestorePointsBtn" type="button" data-i18n="refresh">Atualizar</button></div>
+        <p class="restore-intro" data-i18n="restorePointsHelp">Escolha uma versão por pasta. O estado atual será salvo integralmente antes da restauração.</p>
+        <div class="restore-list" id="restorePointList"></div>
+      </section>
+
+      <section class="panel history-panel" id="history">
+        <div class="panel-heading"><div><span class="eyebrow dark" data-i18n="records">REGISTROS</span><h3 data-i18n="backupHistory">Histórico de backups</h3></div></div>
+        <div class="history-list" id="historyList"></div>
+      </section>
+    </main>
+  </div>
+
+  <div class="modal-backdrop hidden" id="renameModal" role="dialog" aria-modal="true" aria-labelledby="renameModalTitle">
+    <form class="modal-card" id="renameForm">
+      <div class="modal-heading">
+        <div><span class="eyebrow dark" data-i18n="sources">ORIGENS</span><h3 id="renameModalTitle" data-i18n="renameSource">Personalizar nome da origem</h3></div>
+        <button class="modal-close" id="renameCloseBtn" type="button" aria-label="Fechar">×</button>
+      </div>
+      <p data-i18n="renameHelp">Use um nome que ajude a identificar o conteúdo. O caminho real da pasta não será alterado.</p>
+      <div class="original-source" id="renameOriginalName"></div>
+      <label class="field-label" for="renameInput" data-i18n="customName">Nome personalizado</label>
+      <input id="renameInput" type="text" maxlength="80" autocomplete="off" data-i18n-placeholder="customNamePlaceholder" placeholder="Ex.: Documentos do trabalho">
+      <div class="modal-actions">
+        <button class="button ghost" id="restoreNameBtn" type="button" data-i18n="restoreOriginal">Usar nome original</button>
+        <button class="button save-button" type="submit" data-i18n="saveName">Salvar nome</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="toast" id="toast" role="status"></div>
+  <script src="i18n.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
