@@ -70,6 +70,16 @@ function scheduleLabel(value) {
   return t(PRESET_KEYS[value] || 'customSchedule');
 }
 
+function formatLabel(value) {
+  return t({ zip: 'formatZipShort', '7z': 'format7zShort', 'tar.zst': 'formatTarZstShort', mirror: 'formatMirrorShort' }[value] || 'formatZipShort');
+}
+
+function updateFormatHelp() {
+  const format = ui.archiveFormat.value;
+  ui.formatHelp.textContent = t({ zip: 'formatZipHelp', '7z': 'format7zHelp', 'tar.zst': 'formatTarZstHelp', mirror: 'formatMirrorHelp' }[format]);
+  ui.compressionLevel.disabled = format === 'mirror';
+}
+
 function getPausedEntry(source) {
   return (config.pausedSources || []).find((entry) => entry.path.toLowerCase() === source.toLowerCase());
 }
@@ -145,6 +155,9 @@ function renderConfig() {
   ui.backupOnStartup.checked = config.backupOnStartup;
   ui.launchAtLogin.checked = config.launchAtLogin;
   ui.respectGitignore.checked = config.respectGitignore === true;
+  ui.archiveFormat.value = config.archiveFormat || 'zip';
+  ui.compressionLevel.value = config.compressionLevel || 'balanced';
+  updateFormatHelp();
 
   if (PRESET_KEYS[config.schedule]) {
     ui.schedulePreset.value = config.schedule;
@@ -246,6 +259,8 @@ function readForm() {
     backupOnStartup: ui.backupOnStartup.checked,
     launchAtLogin: ui.launchAtLogin.checked,
     respectGitignore: ui.respectGitignore.checked,
+    archiveFormat: ui.archiveFormat.value,
+    compressionLevel: ui.compressionLevel.value,
     pausedSources: config.pausedSources || [],
     sourceNames: config.sourceNames || [],
   };
@@ -429,7 +444,7 @@ function renderRestorePoints() {
       group.points.forEach((point) => {
         const option = document.createElement('option');
         option.value = point.path;
-        option.textContent = `${formatDate(point.modifiedAt)} — ${formatBytes(point.size)}`;
+        option.textContent = `${formatDate(point.modifiedAt)} — ${formatLabel(point.format)} — ${formatBytes(point.size)}`;
         select.append(option);
       });
       const button = document.createElement('button');
@@ -516,7 +531,8 @@ ui.language.addEventListener('change', () => {
   if (lastState) renderState(lastState);
   if (ui.activityList.querySelector('.empty-state')) createEmptyActivity();
 });
-[ui.scheduleEnabled, ui.retentionDays, ui.minFreeSpaceGB, ui.backupOnStartup, ui.launchAtLogin, ui.respectGitignore, ui.customSchedule].forEach((element) => element.addEventListener('change', markDirty));
+[ui.scheduleEnabled, ui.retentionDays, ui.minFreeSpaceGB, ui.backupOnStartup, ui.launchAtLogin, ui.respectGitignore, ui.compressionLevel, ui.customSchedule].forEach((element) => element.addEventListener('change', markDirty));
+ui.archiveFormat.addEventListener('change', () => { updateFormatHelp(); markDirty(); });
 ui.refreshRestorePointsBtn.addEventListener('click', () => refreshRestorePoints().catch((error) => showToast(cleanError(error), 'error')));
 ui.quitAppBtn.addEventListener('click', () => window.backupAPI.quitApp().catch((error) => showToast(cleanError(error), 'error')));
 ui.renameCloseBtn.addEventListener('click', closeRenameModal);

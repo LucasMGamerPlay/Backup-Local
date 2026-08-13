@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { normalizeLanguage, translate } = require('./i18n');
+const { normalizeArchiveFormat, normalizeCompressionLevel } = require('./backup-core');
 
 const APPLICATION_ROOT = path.resolve(__dirname, '..');
 const PROJECT_ROOT = process.env.BACKUP_LOCAL_DATA_DIR
@@ -21,6 +22,8 @@ const DEFAULT_CONFIG = Object.freeze({
   backupOnStartup: false,
   launchAtLogin: false,
   respectGitignore: false,
+  archiveFormat: 'zip',
+  compressionLevel: 'balanced',
   language: 'pt-BR',
   pausedSources: [],
   sourceNames: [],
@@ -101,6 +104,8 @@ function normalizeConfig(value = {}, root = PROJECT_ROOT) {
     backupOnStartup: value.backupOnStartup === true,
     launchAtLogin: value.launchAtLogin === true,
     respectGitignore: value.respectGitignore === true,
+    archiveFormat: normalizeArchiveFormat(value.archiveFormat),
+    compressionLevel: normalizeCompressionLevel(value.compressionLevel),
     language: normalizeLanguage(value.language),
     pausedSources,
     sourceNames,

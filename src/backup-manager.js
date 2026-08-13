@@ -139,7 +139,7 @@ class BackupManager extends EventEmitter {
   removePartialFile() {
     if (!this.partialPath) return;
     try {
-      if (fs.existsSync(this.partialPath)) fs.unlinkSync(this.partialPath);
+      if (fs.existsSync(this.partialPath)) fs.rmSync(this.partialPath, { recursive: true, force: true });
     } catch {
       // O arquivo temporário poderá ser removido no próximo ciclo.
     }

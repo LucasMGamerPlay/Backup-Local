@@ -130,6 +130,9 @@ input:focus, select:focus { border-color: #52b995; box-shadow: 0 0 0 3px #52b995
 .two-columns { display: grid; grid-template-columns: 1.4fr .6fr; gap: 10px; margin-top: 14px; }
 .compact-fields { grid-template-columns: .8fr 1.2fr; }
 .custom-schedule { margin-top: 10px; }
+.format-fields { grid-template-columns: 1fr 1fr; }
+.format-help { min-height: 27px; margin: 7px 0 0; color: var(--muted); font-size: 8px; line-height: 1.5; }
+.format-fields select:disabled { cursor: not-allowed; opacity: .55; }
 .checkbox-field { display: flex; align-items: center; gap: 8px; padding-top: 16px; }
 .checkbox-field input { width: 16px; height: 16px; accent-color: #2aa97c; }
 .checkbox-field strong, .checkbox-field small { display: block; }

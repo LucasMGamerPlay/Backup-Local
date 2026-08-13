@@ -97,8 +97,14 @@
           </div>
 
           <div class="settings-row">
-            <label class="toggle-field"><span><strong data-i18n="respectGitignore">Respeitar .gitignore</strong><small data-i18n="respectGitignoreHelp">Não incluir no ZIP os caminhos listados no .gitignore de cada origem</small></span><input id="respectGitignore" type="checkbox"><i></i></label>
+            <label class="toggle-field"><span><strong data-i18n="respectGitignore">Respeitar .gitignore</strong><small data-i18n="respectGitignoreHelp">Não incluir no backup os caminhos listados no .gitignore de cada origem</small></span><input id="respectGitignore" type="checkbox"><i></i></label>
           </div>
+
+          <div class="two-columns format-fields">
+            <div><label class="field-label" for="archiveFormat" data-i18n="backupFormat">Formato do backup</label><select id="archiveFormat"><option value="zip" data-i18n="formatZip">ZIP — Compatibilidade</option><option value="7z" data-i18n="format7z">7z — Melhor compressão</option><option value="tar.zst" data-i18n="formatTarZst">TAR.ZST — Alta velocidade</option><option value="mirror" data-i18n="formatMirror">Pasta espelho — Sem compactação</option></select></div>
+            <div><label class="field-label" for="compressionLevel" data-i18n="compressionLevel">Nível de compressão</label><select id="compressionLevel"><option value="fast" data-i18n="compressionFast">Rápido</option><option value="balanced" data-i18n="compressionBalanced">Equilibrado</option><option value="maximum" data-i18n="compressionMaximum">Máximo</option></select></div>
+          </div>
+          <p class="format-help" id="formatHelp"></p>
 
           <div class="background-note"><span>●</span><p><strong data-i18n="backgroundExecution">Execução em segundo plano</strong><span data-i18n="backgroundDescription">Ao fechar a janela, o Backup Local continua ativo na bandeja do Windows.</span></p></div>
 
