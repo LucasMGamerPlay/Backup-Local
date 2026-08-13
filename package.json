@@ -1,7 +1,7 @@
 {
   "name": "backup-em-node",
   "productName": "Backup Local",
-  "version": "2.6.0",
+  "version": "2.6.1",
   "description": "Aplicativo desktop para backups locais agendados",
   "main": "electron/main.js",
   "scripts": {

@@ -4,7 +4,7 @@ const path = require('path');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const AdmZip = require('adm-zip');
-const { BACKUP_PREFIX, buildBackupFilename, cleanupBackups, isOwnedBackup, runBackup } = require('../src/backup-core');
+const { BACKUP_PREFIX, buildBackupFilename, cleanupBackups, isOwnedBackup, parseSevenZipWarnings, runBackup } = require('../src/backup-core');
 
 function createFixture(t) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'backup-local-core-'));
@@ -196,4 +196,28 @@ test('ao continuar, preserva o backup anterior se a nova cópia falhar', async (
 
   assert.equal(result.status, 'error');
   assert.equal(fs.existsSync(previousPath), true);
+});
+
+test('preserva o 7z e conclui com avisos quando um arquivo em uso é omitido', async (t) => {
+  const { source, destination } = createFixture(t);
+  const runSevenZip = async (_executable, args) => {
+    const outputPath = args.find((argument) => String(argument).endsWith('.partial'));
+    fs.writeFileSync(outputPath, 'arquivo 7z simulado', 'utf8');
+    return {
+      code: 1,
+      output: 'WARNING: O arquivo já está sendo usado por outro processo.\r\nLog\\ShooterGame.log\r\nFiles read from disk: 67\r\nWarnings: 1',
+    };
+  };
+
+  const result = await runBackup({
+    sources: [source], destination, archiveFormat: '7z', compressionLevel: 'balanced', retentionDays: 4, minFreeSpaceGB: 0,
+  }, { runSevenZip, sevenZipExecutable: '7za-simulado' });
+
+  assert.equal(result.status, 'partial');
+  assert.equal(result.created.length, 1);
+  assert.equal(fs.existsSync(result.created[0].path), true);
+  assert.equal(fs.existsSync(`${result.created[0].path}.partial`), false);
+  assert.match(result.created[0].warnings[0], /ShooterGame\.log/);
+  assert.equal(result.warnings.length, 1);
+  assert.deepEqual(parseSevenZipWarnings('WARNING: bloqueado\nserver.log\nWarnings: 1'), ['bloqueado — server.log']);
 });

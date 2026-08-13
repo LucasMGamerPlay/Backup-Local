@@ -331,12 +331,14 @@ function addActivity(event) {
   const empty = ui.activityList.querySelector('.empty-state');
   if (empty) empty.remove();
   const item = document.createElement('div');
-  item.className = `activity-item${event.type === 'source-error' || event.type === 'fatal' ? ' error' : ''}`;
+  item.className = `activity-item${event.type === 'source-error' || event.type === 'fatal' ? ' error' : event.type === 'source-warning' ? ' warning' : ''}`;
   const dot = document.createElement('span');
   const time = document.createElement('time');
   time.textContent = new Date().toLocaleTimeString(currentLanguage() === 'en' ? 'en-US' : 'pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
   const message = document.createElement('span');
-  message.textContent = event.message || t('currentUpdate');
+  message.textContent = event.details?.length
+    ? `${event.message || t('currentUpdate')} ${event.details.join(' | ')}`
+    : event.message || t('currentUpdate');
   item.append(dot, time, message);
   ui.activityList.prepend(item);
 }

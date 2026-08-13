@@ -4,7 +4,7 @@ Aplicativo desktop para criar backups ZIP de pastas locais, executar cópias man
 
 ## Como instalar
 
-Execute `Backup-Local-Setup-2.6.0.exe`, gerado dentro da pasta `dist`. O instalador cria os atalhos do aplicativo e o Backup Local abre sem uma janela de terminal.
+Execute `Backup-Local-Setup-2.6.1.exe`, gerado dentro da pasta `dist`. O instalador cria os atalhos do aplicativo e o Backup Local abre sem uma janela de terminal.
 
 Para iniciar em modo de desenvolvimento:
 
@@ -29,6 +29,7 @@ npm start
 - escolha do formato de cada novo backup: ZIP, 7z, TAR.ZST ou pasta espelho;
 - níveis de compressão rápido, equilibrado e máximo para os formatos compactados;
 - mecanismo 7-Zip incluído no aplicativo, sem exigir instalação separada;
+- backups 7z de aplicações em execução tentam ler arquivos abertos e preservam o arquivo criado quando apenas itens bloqueados forem omitidos;
 - pontos no tempo organizados por pasta, incluindo backups criados antes de uma origem ser renomeada;
 - restauração protegida: o estado atual completo é salvo antes de qualquer substituição;
 - troca segura da pasta durante a restauração, evitando deixar uma versão parcial em caso de falha;
@@ -49,6 +50,8 @@ Somente backups reconhecidos pelos formatos do aplicativo e iniciados por `Backu
 - **Pasta espelho:** mantém os arquivos diretamente navegáveis, sem compactação.
 
 A configuração selecionada vale para os novos backups. Pontos no tempo antigos continuam reconhecidos e podem ser restaurados mesmo quando foram criados em outro formato. A pasta espelho não usa nível de compressão.
+
+Ao copiar uma aplicação ou servidor em execução, o Windows pode impedir a leitura de algum arquivo bloqueado. No formato 7z, o Backup Local preserva o backup utilizável, marca a execução como concluída com avisos e mostra quais itens não puderam ser lidos. Para uma cópia totalmente consistente de bancos de dados ou mundos de jogos, use também o comando de salvamento do próprio servidor ou interrompa-o durante o backup.
 
 Ao fechar a janela, o aplicativo continua ativo para cumprir os agendamentos. Clique no ícone do Backup Local ao lado do relógio para reabrir, iniciar um backup ou usar **Sair completamente**.
 
