@@ -129,7 +129,7 @@ async function extractBackup(backupPath, stagingPath, format, language) {
   else if (format === '7z') {
     fs.mkdirSync(stagingPath, { recursive: true });
     const listing = await runProcess(sevenZipPath(), ['l', '-slt', backupPath]);
-    const entryListing = listing.split('----------').slice(1).join('----------');
+    const entryListing = listing.output.split('----------').slice(1).join('----------');
     const paths = [...entryListing.matchAll(/^Path = (.+)$/gm)].map((match) => match[1].trim());
     paths.forEach((entryPath) => safeTarget(stagingPath, entryPath, language));
     await runProcess(sevenZipPath(), ['x', backupPath, `-o${stagingPath}`, '-y']);

@@ -254,35 +254,63 @@ function sevenZipPath() {
 
 function runProcess(executable, args, options = {}) {
   return new Promise((resolve, reject) => {
-    const child = spawn(executable, args, { ...options, windowsHide: true });
+    const { acceptableExitCodes = [0], ...spawnOptions } = options;
+    const child = spawn(executable, args, { ...spawnOptions, windowsHide: true });
     let output = '';
     child.stdout?.on('data', (chunk) => { output = `${output}${chunk}`.slice(-100000); });
     child.stderr?.on('data', (chunk) => { output = `${output}${chunk}`.slice(-100000); });
     child.on('error', reject);
     child.on('close', (code) => {
-      if (code === 0) resolve(output);
+      if (acceptableExitCodes.includes(code)) resolve({ code, output });
       else reject(new Error(`7-Zip terminou com o código ${code}. ${output.trim()}`));
     });
   });
 }
 
-async function createSevenZip(entries, source, outputPath, level) {
+function parseSevenZipWarnings(output) {
+  const lines = String(output || '').split(/\r?\n/).map((line) => line.trim());
+  const warnings = [];
+  for (let index = 0; index < lines.length; index += 1) {
+    if (!/^WARNING:/i.test(lines[index])) continue;
+    const details = [];
+    const inline = lines[index].replace(/^WARNING:\s*/i, '').trim();
+    if (inline) details.push(inline);
+    for (let next = index + 1; next < lines.length; next += 1) {
+      const line = lines[next];
+      if (!line) continue;
+      if (/^(Files read from disk:|Archive size:|Scan WARNINGS:|Warnings:|Everything is Ok)/i.test(line)) break;
+      if (/^WARNING:/i.test(line)) break;
+      details.push(line);
+      if (details.length >= 4) break;
+    }
+    const message = details.join(' — ').slice(0, 1000);
+    if (message && !warnings.includes(message)) warnings.push(message);
+  }
+  return warnings;
+}
+
+async function createSevenZip(entries, source, outputPath, level, executable = sevenZipPath(), processRunner = runProcess) {
   const listPath = `${outputPath}.list`;
   try {
     if (!entries.length) {
       const emptyPath = path.join(path.dirname(outputPath), `.BackupLocal-empty-${process.pid}-${Date.now()}`);
       fs.mkdirSync(emptyPath);
       try {
-        await runProcess(sevenZipPath(), ['a', '-t7z', `-mx=${compressionValue('7z', level)}`, outputPath, '.'], { cwd: emptyPath });
+        await processRunner(executable, ['a', '-t7z', '-ssw', `-mx=${compressionValue('7z', level)}`, outputPath, '.'], { cwd: emptyPath });
       } finally {
         fs.rmSync(emptyPath, { recursive: true, force: true });
       }
-      return;
+      return [];
     }
     fs.writeFileSync(listPath, entries.map((entry) => entry.relativePath.replace(/\//g, path.sep)).join('\r\n'), 'utf8');
-    await runProcess(sevenZipPath(), [
-      'a', '-t7z', `-mx=${compressionValue('7z', level)}`, '-scsUTF-8', outputPath, `@${listPath}`,
-    ], { cwd: source });
+    const processResult = await processRunner(executable, [
+      'a', '-t7z', '-ssw', `-mx=${compressionValue('7z', level)}`, '-scsUTF-8', outputPath, `@${listPath}`,
+    ], { cwd: source, acceptableExitCodes: [0, 1] });
+    if (processResult.code === 1) {
+      const parsed = parseSevenZipWarnings(processResult.output);
+      return parsed.length ? parsed : ['O 7-Zip concluiu com avisos e pode ter omitido arquivos em uso.'];
+    }
+    return [];
   } finally {
     fs.rmSync(listPath, { force: true });
   }
@@ -313,8 +341,16 @@ async function createBackup(source, destination, onProgress = () => {}, date = n
   try {
     const matcher = createIgnoreMatcher(source, options.respectGitignore === true);
     const { entries, ignoredCount } = enumerateSource(source, matcher);
+    let warnings = [];
     if (archiveFormat === 'zip') await createZip(entries, partialPath, compressionLevel);
-    else if (archiveFormat === '7z') await createSevenZip(entries, source, partialPath, compressionLevel);
+    else if (archiveFormat === '7z') warnings = await createSevenZip(
+      entries,
+      source,
+      partialPath,
+      compressionLevel,
+      options.sevenZipExecutable || sevenZipPath(),
+      options.runSevenZip || runProcess,
+    );
     else if (archiveFormat === 'tar.zst') await createTarZstd(entries, partialPath, compressionLevel);
     else await createMirror(entries, partialPath);
     fs.renameSync(partialPath, finalPath);
@@ -328,6 +364,7 @@ async function createBackup(source, destination, onProgress = () => {}, date = n
       compressionLevel,
       size: stats.isDirectory() ? directorySize(finalPath) : stats.size,
       ignoredCount,
+      warnings,
     };
   } catch (error) {
     fs.rmSync(partialPath, { recursive: true, force: true });
@@ -341,7 +378,7 @@ async function runBackup(config, options = {}) {
   const startedAt = new Date();
   const result = {
     trigger: options.trigger || 'manual', startedAt: startedAt.toISOString(), finishedAt: null,
-    status: 'success', destination: config.destination, created: [], errors: [], removed: [], skipped: [], freeSpaceBytes: null,
+    status: 'success', destination: config.destination, created: [], errors: [], warnings: [], removed: [], skipped: [], freeSpaceBytes: null,
   };
 
   fs.mkdirSync(config.destination, { recursive: true });
@@ -372,9 +409,22 @@ async function runBackup(config, options = {}) {
         respectGitignore: config.respectGitignore === true,
         archiveFormat: config.archiveFormat,
         compressionLevel: config.compressionLevel,
+        sevenZipExecutable: options.sevenZipExecutable,
+        runSevenZip: options.runSevenZip,
       });
       result.created.push(archive);
-      onProgress({ type: 'source-complete', source, sourceName, index: index + 1, total: activeSources.length, archive, message: translate(language, 'sourceComplete', { name: sourceName }) });
+      if (archive.warnings.length) {
+        const warning = {
+          source,
+          sourceName,
+          message: translate(language, 'archiveCompletedWithWarnings', { name: sourceName, count: archive.warnings.length }),
+          details: archive.warnings,
+        };
+        result.warnings.push(warning);
+        onProgress({ type: 'source-warning', index: index + 1, total: activeSources.length, archive, ...warning });
+      } else {
+        onProgress({ type: 'source-complete', source, sourceName, index: index + 1, total: activeSources.length, archive, message: translate(language, 'sourceComplete', { name: sourceName }) });
+      }
     } catch (error) {
       result.errors.push({ source, sourceName, message: error.message });
       onProgress({ type: 'source-error', source, sourceName, index: index + 1, total: activeSources.length, message: `${sourceName}: ${error.message}` });
@@ -385,7 +435,7 @@ async function runBackup(config, options = {}) {
   result.removed.push(...finalCleanup.removed);
   result.freeSpaceBytes = getFreeSpace(config.destination);
   result.finishedAt = new Date().toISOString();
-  if (result.errors.length && result.created.length) result.status = 'partial';
+  if ((result.errors.length && result.created.length) || result.warnings.length) result.status = 'partial';
   if (result.errors.length && !result.created.length) result.status = 'error';
   if (!config.sources.length) {
     result.status = 'error';
@@ -396,8 +446,8 @@ async function runBackup(config, options = {}) {
 
 module.exports = {
   ARCHIVE_FORMATS, BACKUP_PREFIX, COMPRESSION_LEVELS, FORMAT_EXTENSIONS,
-  buildBackupFilename, cleanupBackups, compressionValue, createBackup, createIgnoreMatcher,
+  buildBackupFilename, cleanupBackups, compressionValue, createBackup, createIgnoreMatcher, createSevenZip,
   directorySize, enumerateSource, formatTimestamp, getBackupFormat, getFreeSpace,
   getSourceFingerprint, isOwnedBackup, listOwnedBackups, normalizeArchiveFormat,
-  normalizeCompressionLevel, removeBackup, runBackup, runProcess, safeName, sevenZipPath, validateSource,
+  normalizeCompressionLevel, parseSevenZipWarnings, removeBackup, runBackup, runProcess, safeName, sevenZipPath, validateSource,
 };
