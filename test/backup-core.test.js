@@ -19,13 +19,16 @@ function createFixture(t) {
 
 test('reconhece somente backups pertencentes ao aplicativo', () => {
   assert.equal(isOwnedBackup(`${BACKUP_PREFIX}Documentos_abc123_2026-01-01_00-00-00.zip`), true);
+  assert.equal(isOwnedBackup(`${BACKUP_PREFIX}Documentos_abc123_2026-01-01_00-00-00.7z`), true);
+  assert.equal(isOwnedBackup(`${BACKUP_PREFIX}Documentos_abc123_2026-01-01_00-00-00.tar.zst`), true);
+  assert.equal(isOwnedBackup(`${BACKUP_PREFIX}Documentos_abc123_2026-01-01_00-00-00.mirror`), true);
   assert.equal(isOwnedBackup('arquivo-pessoal.zip'), false);
   assert.equal(isOwnedBackup('Backup_Teste_2026.zip'), false);
 });
 
-test('cria um ZIP válido com o conteúdo da pasta', (t) => {
+test('cria um ZIP válido com o conteúdo da pasta', async (t) => {
   const { source, destination } = createFixture(t);
-  const result = runBackup({
+  const result = await runBackup({
     sources: [source],
     destination,
     retentionDays: 4,
@@ -39,14 +42,14 @@ test('cria um ZIP válido com o conteúdo da pasta', (t) => {
   assert.equal(zip.readAsText('exemplo.txt'), 'conteúdo protegido');
 });
 
-test('respeita as regras do .gitignore quando a opção está ativa', (t) => {
+test('respeita as regras do .gitignore quando a opção está ativa', async (t) => {
   const { source, destination } = createFixture(t);
   fs.mkdirSync(path.join(source, 'cache'), { recursive: true });
   fs.writeFileSync(path.join(source, 'cache', 'temporario.bin'), 'ignorar', 'utf8');
   fs.writeFileSync(path.join(source, 'segredo.log'), 'ignorar', 'utf8');
   fs.writeFileSync(path.join(source, '.gitignore'), 'cache/\n*.log\n', 'utf8');
 
-  const result = runBackup({
+  const result = await runBackup({
     sources: [source],
     destination,
     retentionDays: 4,
@@ -62,14 +65,14 @@ test('respeita as regras do .gitignore quando a opção está ativa', (t) => {
   assert.equal(result.created[0].ignoredCount, 2);
 });
 
-test('usa o nome personalizado no ZIP sem alterar a identidade da origem', (t) => {
+test('usa o nome personalizado no ZIP sem alterar a identidade da origem', async (t) => {
   const { source, destination } = createFixture(t);
   const defaultName = buildBackupFilename(source, new Date('2026-01-01T00:00:00Z'));
   const customName = buildBackupFilename(source, new Date('2026-01-01T00:00:00Z'), 'Projetos importantes');
   const defaultFingerprint = defaultName.match(/_([a-f0-9]{6})_/)[1];
   const customFingerprint = customName.match(/_([a-f0-9]{6})_/)[1];
 
-  const result = runBackup({
+  const result = await runBackup({
     sources: [source],
     sourceNames: [{ path: source, name: 'Projetos importantes' }],
     destination,
@@ -99,9 +102,9 @@ test('a retenção remove backup antigo e preserva ZIP alheio', (t) => {
   assert.equal(fs.existsSync(unrelated), true);
 });
 
-test('retorna mensagens do backup em inglês', (t) => {
+test('retorna mensagens do backup em inglês', async (t) => {
   const { root, destination } = createFixture(t);
-  const result = runBackup({
+  const result = await runBackup({
     sources: [path.join(root, 'missing-folder')],
     destination,
     retentionDays: 4,
@@ -113,9 +116,9 @@ test('retorna mensagens do backup em inglês', (t) => {
   assert.equal(result.errors[0].message, 'The folder does not exist.');
 });
 
-test('pasta pausada não cria um novo backup', (t) => {
+test('pasta pausada não cria um novo backup', async (t) => {
   const { source, destination } = createFixture(t);
-  const result = runBackup({
+  const result = await runBackup({
     sources: [source],
     pausedSources: [{ path: source, pausedAt: '2026-01-01T00:00:00Z' }],
     destination,
@@ -176,14 +179,14 @@ test('limpeza por espaço também preserva o último backup pausado', (t) => {
   assert.equal(result.removed[0].reason, 'space');
 });
 
-test('ao continuar, preserva o backup anterior se a nova cópia falhar', (t) => {
+test('ao continuar, preserva o backup anterior se a nova cópia falhar', async (t) => {
   const { root, destination } = createFixture(t);
   const missingSource = path.join(root, 'OrigemRemovida');
   const previousPath = path.join(destination, buildBackupFilename(missingSource, new Date('2020-01-01T00:00:00Z')));
   fs.writeFileSync(previousPath, 'last-known-good');
   fs.utimesSync(previousPath, new Date('2020-01-01T00:00:00Z'), new Date('2020-01-01T00:00:00Z'));
 
-  const result = runBackup({
+  const result = await runBackup({
     sources: [missingSource],
     pausedSources: [],
     destination,

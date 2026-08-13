@@ -206,6 +206,8 @@ async function runPackagedIntegrationTest() {
       retentionDays: 4,
       minFreeSpaceGB: 0,
       language: 'pt-BR',
+      archiveFormat: '7z',
+      compressionLevel: 'fast',
     }, 'integration-test');
     const archive = result.created[0];
     if (result.status !== 'success' || !archive || !fs.existsSync(archive.path)) {
@@ -219,6 +221,8 @@ async function runPackagedIntegrationTest() {
       retentionDays: 4,
       minFreeSpaceGB: 0,
       language: 'pt-BR',
+      archiveFormat: '7z',
+      compressionLevel: 'fast',
     }, source, archive.path);
     if (restored.status !== 'success'
       || fs.readFileSync(path.join(source, 'teste.txt'), 'utf8') !== 'Backup Local'
@@ -270,7 +274,9 @@ async function runEnglishUiTest() {
     renameTitle: document.querySelector('.rename-source')?.title,
     gitignoreChecked: document.querySelector('#respectGitignore')?.checked,
     restoreHeading: document.querySelector('[data-i18n="restorePoints"]')?.textContent,
-    restoreSourceTitle: document.querySelector('.restore-source-heading strong')?.textContent
+    restoreSourceTitle: document.querySelector('.restore-source-heading strong')?.textContent,
+    archiveFormat: document.querySelector('#archiveFormat')?.value,
+    compressionLevel: document.querySelector('#compressionLevel')?.value
   })`);
   let valid = result.language === 'en'
     && result.selected === 'en'
@@ -283,6 +289,8 @@ async function runEnglishUiTest() {
     && result.gitignoreChecked === true
     && result.restoreHeading === 'Points in time'
     && result.restoreSourceTitle === 'Work documents'
+    && result.archiveFormat === 'tar.zst'
+    && result.compressionLevel === 'maximum'
     && trayMenu?.items[0]?.label === 'Open Local Backup'
     && trayMenu?.items.at(-1)?.label === 'Quit completely';
 
@@ -473,9 +481,14 @@ app.whenReady().then(async () => {
       pausedSources: [{ path: uiSource, pausedAt: '2026-01-01T00:00:00.000Z' }],
       sourceNames: [{ path: uiSource, name: 'Work documents' }],
       respectGitignore: true,
+      archiveFormat: 'tar.zst',
+      compressionLevel: 'maximum',
     });
     fs.mkdirSync(config.destination, { recursive: true });
-    createBackup(uiSource, config.destination, () => {}, new Date(), 'en', 'Work documents');
+    await createBackup(uiSource, config.destination, () => {}, new Date(), 'en', 'Work documents', {
+      archiveFormat: config.archiveFormat,
+      compressionLevel: config.compressionLevel,
+    });
   }
   backupManager.setLanguage(config.language);
   configureScheduler(config);

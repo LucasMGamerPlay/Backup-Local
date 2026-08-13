@@ -4,7 +4,7 @@ Aplicativo desktop para criar backups ZIP de pastas locais, executar cópias man
 
 ## Como instalar
 
-Execute `Backup-Local-Setup-2.5.0.exe`, gerado dentro da pasta `dist`. O instalador cria os atalhos do aplicativo e o Backup Local abre sem uma janela de terminal.
+Execute `Backup-Local-Setup-2.6.0.exe`, gerado dentro da pasta `dist`. O instalador cria os atalhos do aplicativo e o Backup Local abre sem uma janela de terminal.
 
 Para iniciar em modo de desenvolvimento:
 
@@ -26,6 +26,9 @@ npm start
 - proteção do último backup de uma pasta pausada contra limpeza por idade ou espaço;
 - nomes personalizados para identificar as origens e seus arquivos ZIP;
 - opção para respeitar as regras do `.gitignore` presente na raiz de cada origem;
+- escolha do formato de cada novo backup: ZIP, 7z, TAR.ZST ou pasta espelho;
+- níveis de compressão rápido, equilibrado e máximo para os formatos compactados;
+- mecanismo 7-Zip incluído no aplicativo, sem exigir instalação separada;
 - pontos no tempo organizados por pasta, incluindo backups criados antes de uma origem ser renomeada;
 - restauração protegida: o estado atual completo é salvo antes de qualquer substituição;
 - troca segura da pasta durante a restauração, evitando deixar uma versão parcial em caso de falha;
@@ -36,7 +39,16 @@ npm start
 - migração automática de `pastas.txt` e `destino.txt`;
 - modo de serviço sem interface.
 
-Somente arquivos iniciados por `BackupLocal_` entram na limpeza automática. Outros arquivos ZIP no destino não são alterados.
+Somente backups reconhecidos pelos formatos do aplicativo e iniciados por `BackupLocal_` entram na limpeza automática. Outros arquivos e pastas no destino não são alterados.
+
+## Formatos de backup
+
+- **ZIP:** opção padrão e mais compatível com o Windows.
+- **7z:** prioriza arquivos menores e melhor taxa de compressão.
+- **TAR.ZST:** usa compactação em fluxo de alta velocidade, indicada para pastas grandes.
+- **Pasta espelho:** mantém os arquivos diretamente navegáveis, sem compactação.
+
+A configuração selecionada vale para os novos backups. Pontos no tempo antigos continuam reconhecidos e podem ser restaurados mesmo quando foram criados em outro formato. A pasta espelho não usa nível de compressão.
 
 Ao fechar a janela, o aplicativo continua ativo para cumprir os agendamentos. Clique no ícone do Backup Local ao lado do relógio para reabrir, iniciar um backup ou usar **Sair completamente**.
 

@@ -21,6 +21,8 @@ test('normaliza valores e remove origens duplicadas', () => {
     minFreeSpaceGB: -2,
     launchAtLogin: true,
     respectGitignore: true,
+    archiveFormat: 'tar.zst',
+    compressionLevel: 'maximum',
     language: 'en',
     pausedSources: [{ path: source, pausedAt: '2026-01-02T03:04:05.000Z' }],
     sourceNames: [{ path: source, name: '  Documentos   importantes  ' }],
@@ -31,6 +33,8 @@ test('normaliza valores e remove origens duplicadas', () => {
   assert.equal(config.minFreeSpaceGB, 0);
   assert.equal(config.launchAtLogin, true);
   assert.equal(config.respectGitignore, true);
+  assert.equal(config.archiveFormat, 'tar.zst');
+  assert.equal(config.compressionLevel, 'maximum');
   assert.equal(config.language, 'en');
   assert.deepEqual(config.pausedSources, [{ path: path.resolve(source), pausedAt: '2026-01-02T03:04:05.000Z' }]);
   assert.deepEqual(config.sourceNames, [{ path: path.resolve(source), name: 'Documentos importantes' }]);

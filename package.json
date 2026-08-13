@@ -1,7 +1,7 @@
 {
   "name": "backup-em-node",
   "productName": "Backup Local",
-  "version": "2.5.0",
+  "version": "2.6.0",
   "description": "Aplicativo desktop para backups locais agendados",
   "main": "electron/main.js",
   "scripts": {
@@ -19,10 +19,13 @@
   "type": "commonjs",
   "dependencies": {
     "adm-zip": "^0.6.0",
+    "archiver": "^8.0.0",
     "ignore": "^7.0.6",
-    "node-cron": "^4.5.0"
+    "node-cron": "^4.5.0",
+    "tar-stream": "^3.2.0"
   },
   "devDependencies": {
+    "7zip-bin": "^5.2.0",
     "electron": "43.4.0",
     "electron-builder": "26.15.3"
   },
@@ -46,6 +49,14 @@
       {
         "from": "build/icon.ico",
         "to": "tray-icon.ico"
+      },
+      {
+        "from": "node_modules/7zip-bin/win/x64/7za.exe",
+        "to": "7za.exe"
+      },
+      {
+        "from": "node_modules/7zip-bin/LICENSE.txt",
+        "to": "licenses/7zip-bin-LICENSE.txt"
       }
     ],
     "win": {
